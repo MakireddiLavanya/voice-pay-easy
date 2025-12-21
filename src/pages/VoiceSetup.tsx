@@ -20,7 +20,7 @@ const VoiceSetup = () => {
   const [loading, setLoading] = useState(false);
 
   const startRecording = () => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     
     if (!SpeechRecognition) {
       toast({
