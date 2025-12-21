@@ -70,7 +70,7 @@ const TransactionList = ({ limit }: TransactionListProps) => {
         setTransactions([]);
       }
     } catch (error) {
-      console.error('Error fetching transactions:', error);
+      // Error handled silently - empty transaction list shown to user
     } finally {
       setLoading(false);
     }

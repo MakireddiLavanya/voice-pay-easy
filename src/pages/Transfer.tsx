@@ -77,7 +77,7 @@ const Transfer = () => {
       if (error) throw error;
       setRecipients(data || []);
     } catch (error) {
-      console.error('Error searching recipients:', error);
+      // Error handled silently - empty results shown to user
     } finally {
       setSearching(false);
     }
@@ -108,37 +108,25 @@ const Transfer = () => {
 
     setLoading(true);
     try {
-      // Create transaction
-      const { error: txError } = await supabase.from('transactions').insert({
-        sender_id: user.id,
-        receiver_id: selectedRecipient.user_id,
-        amount: transferAmount,
-        description: `Transfer to ${selectedRecipient.full_name}`,
-        status: 'completed',
+      // Use atomic transfer function to prevent race conditions
+      const { data, error } = await supabase.rpc('transfer_funds', {
+        p_sender_id: user.id,
+        p_receiver_id: selectedRecipient.user_id,
+        p_amount: transferAmount,
+        p_description: `Transfer to ${selectedRecipient.full_name}`,
       });
 
-      if (txError) throw txError;
+      if (error) throw error;
 
-      // Update sender wallet
-      const { error: senderError } = await supabase
-        .from('wallets')
-        .update({ balance: balance - transferAmount })
-        .eq('user_id', user.id);
-
-      if (senderError) throw senderError;
-
-      // Update receiver wallet
-      const { data: receiverWallet } = await supabase
-        .from('wallets')
-        .select('balance')
-        .eq('user_id', selectedRecipient.user_id)
-        .single();
-
-      if (receiverWallet) {
-        await supabase
-          .from('wallets')
-          .update({ balance: receiverWallet.balance + transferAmount })
-          .eq('user_id', selectedRecipient.user_id);
+      const result = data as { success: boolean; error?: string; transaction_id?: string };
+      
+      if (!result.success) {
+        toast({
+          title: 'Transfer Failed',
+          description: result.error || 'Something went wrong. Please try again.',
+          variant: 'destructive',
+        });
+        return;
       }
 
       toast({
@@ -148,7 +136,6 @@ const Transfer = () => {
 
       navigate('/dashboard');
     } catch (error) {
-      console.error('Transfer error:', error);
       toast({
         title: 'Transfer Failed',
         description: 'Something went wrong. Please try again.',

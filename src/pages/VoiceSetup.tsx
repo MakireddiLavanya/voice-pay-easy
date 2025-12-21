@@ -46,8 +46,7 @@ const VoiceSetup = () => {
       setStep('confirm');
     };
 
-    recognition.onerror = (event) => {
-      console.error('Speech recognition error:', event.error);
+    recognition.onerror = () => {
       setIsRecording(false);
       toast({
         title: 'Recording Error',
@@ -63,21 +62,45 @@ const VoiceSetup = () => {
     recognition.start();
   };
 
+  // Calculate string similarity using Levenshtein distance
+  const calculateSimilarity = (str1: string, str2: string): number => {
+    const len1 = str1.length;
+    const len2 = str2.length;
+    const matrix: number[][] = [];
+
+    for (let i = 0; i <= len1; i++) {
+      matrix[i] = [i];
+    }
+    for (let j = 0; j <= len2; j++) {
+      matrix[0][j] = j;
+    }
+
+    for (let i = 1; i <= len1; i++) {
+      for (let j = 1; j <= len2; j++) {
+        const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j - 1] + cost
+        );
+      }
+    }
+
+    const maxLen = Math.max(len1, len2);
+    return maxLen === 0 ? 1 : 1 - matrix[len1][len2] / maxLen;
+  };
+
   const verifyAndSave = async () => {
-    // Simple verification: check if the recorded phrase matches (case-insensitive)
     const normalizedRecorded = recordedPhrase.toLowerCase().trim();
     const normalizedPassphrase = PASSPHRASE.toLowerCase().trim();
     
-    // Allow some flexibility - check if key words are present
-    const keyWords = ['voice', 'password'];
-    const hasKeyWords = keyWords.every((word) => 
-      normalizedRecorded.includes(word)
-    );
-
-    if (!hasKeyWords && normalizedRecorded !== normalizedPassphrase) {
+    // Require 85% similarity to the exact passphrase
+    const similarity = calculateSimilarity(normalizedRecorded, normalizedPassphrase);
+    
+    if (similarity < 0.85) {
       toast({
         title: 'Phrase Mismatch',
-        description: 'The recorded phrase doesn\'t match. Please try again.',
+        description: `The recorded phrase doesn't match closely enough. Please say "${PASSPHRASE}" clearly.`,
         variant: 'destructive',
       });
       setStep('record');
@@ -102,7 +125,6 @@ const VoiceSetup = () => {
         description: 'Your voice has been set up for authentication.',
       });
     } catch (error) {
-      console.error('Error saving voice data:', error);
       toast({
         title: 'Error',
         description: 'Failed to save voice data. Please try again.',
