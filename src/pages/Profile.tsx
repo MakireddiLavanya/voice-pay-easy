@@ -49,7 +49,7 @@ const Profile = () => {
       setProfile(profileData);
       setWallet(walletData);
     } catch (error) {
-      console.error('Error fetching data:', error);
+      // Error handled silently - profile/wallet data may not be available
     } finally {
       setLoading(false);
     }
