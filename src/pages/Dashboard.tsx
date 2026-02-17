@@ -1,3 +1,6 @@
+/**
+ * Dashboard Page - Enhanced with Fraud Alert Banner and Security Status
+ */
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -7,15 +10,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import VoiceButton from '@/components/VoiceButton';
 import TransactionList from '@/components/TransactionList';
+import FraudAlertBanner from '@/components/FraudAlertBanner';
 import {
-  Wallet,
-  History,
-  Send,
-  Plus,
-  LogOut,
-  User,
-  CreditCard,
-  Mic,
+  Wallet, History, Send, LogOut, User, CreditCard, Mic, Shield,
 } from 'lucide-react';
 
 interface WalletData {
@@ -29,6 +26,7 @@ interface ProfileData {
   full_name: string;
   email: string;
   voice_enrolled: boolean;
+  auth_mode: string;
 }
 
 const Dashboard = () => {
@@ -40,45 +38,32 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!authLoading && !user) {
-      navigate('/auth');
-    }
+    if (!authLoading && !user) navigate('/auth');
   }, [user, authLoading, navigate]);
 
   useEffect(() => {
-    if (user) {
-      fetchData();
-    }
+    if (user) fetchData();
   }, [user]);
 
   const fetchData = async () => {
     try {
-      // Fetch wallet
       const { data: walletData, error: walletError } = await supabase
         .from('wallets')
         .select('*')
         .eq('user_id', user?.id)
         .single();
-
       if (walletError) throw walletError;
       setWallet(walletData);
 
-      // Fetch profile
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('full_name, email, voice_enrolled')
+        .select('full_name, email, voice_enrolled, auth_mode')
         .eq('user_id', user?.id)
         .single();
-
       if (profileError) throw profileError;
       setProfile(profileData);
-    } catch (error) {
-      console.error('Error fetching data:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load wallet data',
-        variant: 'destructive',
-      });
+    } catch {
+      toast({ title: 'Error', description: 'Failed to load wallet data', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -92,6 +77,10 @@ const Dashboard = () => {
   const handleVoiceCommand = (command: { recipient: string; amount: number }) => {
     navigate('/transfer', { state: command });
   };
+
+  // Auth mode display label
+  const authModeLabel = profile?.auth_mode === 'voice_pin' ? 'Voice + PIN' 
+    : profile?.auth_mode === 'voice' ? 'Voice Only' : 'PIN Only';
 
   if (authLoading || loading) {
     return (
@@ -125,6 +114,9 @@ const Dashboard = () => {
 
       {/* Main Content */}
       <main className="max-w-lg mx-auto px-4 py-6 space-y-6">
+        {/* Fraud Alert Banner */}
+        <FraudAlertBanner />
+
         {/* Balance Card */}
         <Card className="balance-card overflow-hidden relative">
           <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-white/10 -translate-y-1/2 translate-x-1/2" />
@@ -137,11 +129,29 @@ const Dashboard = () => {
             <p className="text-4xl font-bold text-primary-foreground mb-4">
               ₹{wallet?.balance?.toLocaleString('en-IN') || '0'}
             </p>
-            <div className="flex items-center gap-4 text-sm text-primary-foreground/70">
-              <span>A/C: {wallet?.bank_account_no || 'N/A'}</span>
-              <span>•</span>
-              <span>IFSC: {wallet?.ifsc_code || 'N/A'}</span>
+            <div className="flex items-center justify-between text-sm text-primary-foreground/70">
+              <div className="flex items-center gap-4">
+                <span>A/C: {wallet?.bank_account_no || 'N/A'}</span>
+                <span>•</span>
+                <span>IFSC: {wallet?.ifsc_code || 'N/A'}</span>
+              </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Security Status Bar */}
+        <Card className="border-primary/20 bg-primary/5">
+          <CardContent className="p-3 flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+              <Shield className="w-4 h-4 text-primary" />
+            </div>
+            <div className="flex-1">
+              <p className="text-xs text-muted-foreground">Security Mode</p>
+              <p className="text-sm font-medium text-foreground">{authModeLabel}</p>
+            </div>
+            <Button size="sm" variant="outline" onClick={() => navigate('/profile')}>
+              Change
+            </Button>
           </CardContent>
         </Card>
 
@@ -153,43 +163,25 @@ const Dashboard = () => {
                 <Mic className="w-5 h-5 text-warning" />
               </div>
               <div className="flex-1">
-                <p className="text-sm font-medium text-foreground">
-                  Voice Not Enrolled
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Set up voice authentication for secure transfers
-                </p>
+                <p className="text-sm font-medium text-foreground">Voice Not Enrolled</p>
+                <p className="text-xs text-muted-foreground">Set up voice authentication for secure transfers</p>
               </div>
-              <Button size="sm" onClick={() => navigate('/voice-setup')}>
-                Setup
-              </Button>
+              <Button size="sm" onClick={() => navigate('/voice-setup')}>Setup</Button>
             </CardContent>
           </Card>
         )}
 
         {/* Quick Actions */}
         <div className="grid grid-cols-3 gap-3">
-          <Button
-            variant="outline"
-            className="h-20 flex-col gap-2 bg-card hover:bg-secondary"
-            onClick={() => navigate('/transfer')}
-          >
+          <Button variant="outline" className="h-20 flex-col gap-2 bg-card hover:bg-secondary" onClick={() => navigate('/transfer')}>
             <Send className="w-5 h-5 text-primary" />
             <span className="text-xs">Send</span>
           </Button>
-          <Button
-            variant="outline"
-            className="h-20 flex-col gap-2 bg-card hover:bg-secondary"
-            onClick={() => navigate('/history')}
-          >
+          <Button variant="outline" className="h-20 flex-col gap-2 bg-card hover:bg-secondary" onClick={() => navigate('/history')}>
             <History className="w-5 h-5 text-primary" />
             <span className="text-xs">History</span>
           </Button>
-          <Button
-            variant="outline"
-            className="h-20 flex-col gap-2 bg-card hover:bg-secondary"
-            onClick={() => navigate('/profile')}
-          >
+          <Button variant="outline" className="h-20 flex-col gap-2 bg-card hover:bg-secondary" onClick={() => navigate('/profile')}>
             <User className="w-5 h-5 text-primary" />
             <span className="text-xs">Profile</span>
           </Button>
@@ -198,12 +190,8 @@ const Dashboard = () => {
         {/* Recent Transactions */}
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-foreground">
-              Recent Transactions
-            </h2>
-            <Button variant="ghost" size="sm" onClick={() => navigate('/history')}>
-              View All
-            </Button>
+            <h2 className="text-lg font-semibold text-foreground">Recent Transactions</h2>
+            <Button variant="ghost" size="sm" onClick={() => navigate('/history')}>View All</Button>
           </div>
           <TransactionList limit={5} />
         </div>

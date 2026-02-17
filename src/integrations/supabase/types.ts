@@ -14,39 +14,111 @@ export type Database = {
   }
   public: {
     Tables: {
+      authentication_logs: {
+        Row: {
+          auth_method: string
+          created_at: string
+          details: string | null
+          id: string
+          ip_address: string | null
+          success: boolean
+          user_id: string
+        }
+        Insert: {
+          auth_method: string
+          created_at?: string
+          details?: string | null
+          id?: string
+          ip_address?: string | null
+          success: boolean
+          user_id: string
+        }
+        Update: {
+          auth_method?: string
+          created_at?: string
+          details?: string | null
+          id?: string
+          ip_address?: string | null
+          success?: boolean
+          user_id?: string
+        }
+        Relationships: []
+      }
+      fraud_alerts: {
+        Row: {
+          alert_type: string
+          created_at: string
+          description: string
+          id: string
+          is_resolved: boolean
+          severity: string
+          transaction_id: string | null
+          user_id: string
+        }
+        Insert: {
+          alert_type: string
+          created_at?: string
+          description: string
+          id?: string
+          is_resolved?: boolean
+          severity?: string
+          transaction_id?: string | null
+          user_id: string
+        }
+        Update: {
+          alert_type?: string
+          created_at?: string
+          description?: string
+          id?: string
+          is_resolved?: boolean
+          severity?: string
+          transaction_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
+          auth_mode: string
           created_at: string
           email: string
           full_name: string
           id: string
           mobile_number: string
+          transaction_pin: string | null
           updated_at: string
           user_id: string
           voice_enrolled: boolean | null
           voice_passphrase: string | null
+          voice_tolerance: number
         }
         Insert: {
+          auth_mode?: string
           created_at?: string
           email: string
           full_name: string
           id?: string
           mobile_number?: string
+          transaction_pin?: string | null
           updated_at?: string
           user_id: string
           voice_enrolled?: boolean | null
           voice_passphrase?: string | null
+          voice_tolerance?: number
         }
         Update: {
+          auth_mode?: string
           created_at?: string
           email?: string
           full_name?: string
           id?: string
           mobile_number?: string
+          transaction_pin?: string | null
           updated_at?: string
           user_id?: string
           voice_enrolled?: boolean | null
           voice_passphrase?: string | null
+          voice_tolerance?: number
         }
         Relationships: []
       }
