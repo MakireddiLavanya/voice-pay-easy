@@ -102,13 +102,13 @@ const Transfer = () => {
     setSearching(true);
     try {
       const { data, error } = await supabase
-        .from('profiles')
+        .from('profiles_public' as any)
         .select('user_id, full_name, email')
         .neq('user_id', user?.id)
         .or(`full_name.ilike.%${query}%,email.ilike.%${query}%`)
         .limit(10);
       if (error) throw error;
-      setRecipients(data || []);
+      setRecipients((data as unknown as Profile[]) || []);
     } catch {
       // Silent - empty results shown
     } finally {

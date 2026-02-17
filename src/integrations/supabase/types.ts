@@ -187,7 +187,24 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      profiles_public: {
+        Row: {
+          email: string | null
+          full_name: string | null
+          user_id: string | null
+        }
+        Insert: {
+          email?: string | null
+          full_name?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          email?: string | null
+          full_name?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       transfer_funds: {
