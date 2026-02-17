@@ -131,7 +131,7 @@ const Dashboard = () => {
             </p>
             <div className="flex items-center justify-between text-sm text-primary-foreground/70">
               <div className="flex items-center gap-4">
-                <span>A/C: {wallet?.bank_account_no || 'N/A'}</span>
+                <span>A/C: ••••{wallet?.bank_account_no?.slice(-4) || 'N/A'}</span>
                 <span>•</span>
                 <span>IFSC: {wallet?.ifsc_code || 'N/A'}</span>
               </div>

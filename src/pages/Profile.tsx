@@ -176,13 +176,13 @@ const Profile = () => {
             <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
               <div>
                 <p className="text-xs text-muted-foreground">Account Number</p>
-                <p className="font-medium text-foreground font-mono">{wallet?.bank_account_no}</p>
+                <p className="font-medium text-foreground font-mono">••••{wallet?.bank_account_no?.slice(-4)}</p>
               </div>
             </div>
             <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
               <div>
                 <p className="text-xs text-muted-foreground">IFSC Code</p>
-                <p className="font-medium text-foreground font-mono">{wallet?.ifsc_code}</p>
+                <p className="font-medium text-foreground font-mono">••••{wallet?.ifsc_code?.slice(-4)}</p>
               </div>
             </div>
             <div className="flex items-center gap-3 p-3 bg-primary/10 rounded-lg">
