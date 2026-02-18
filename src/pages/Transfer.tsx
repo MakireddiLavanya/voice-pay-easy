@@ -161,8 +161,7 @@ const Transfer = () => {
     setStep('authenticate');
   };
 
-  const handleAuthenticated = () => setStep('voice_confirm');
-  const handleVoiceConfirmed = () => executeTransfer();
+  const handleAuthenticated = () => executeTransfer();
   const handleFallbackToVoiceCode = () => setStep('voice_code_fallback');
   const handleVoiceCodeVerified = () => { logAuthAttempt('voice_code', true); executeTransfer(); };
   const handleVoiceCodeFailed = () => {
@@ -416,18 +415,7 @@ const Transfer = () => {
           </div>
         )}
 
-        {/* Voice confirm */}
-        {step === 'voice_confirm' && selectedRecipient && (
-          <div className="animate-fade-in">
-            <VoiceConfirmation
-              recipientName={selectedRecipient.full_name}
-              amount={parseFloat(amount)}
-              onConfirmed={handleVoiceConfirmed}
-              onCancel={() => setStep('amount')}
-              onFallbackToVoiceCode={handleFallbackToVoiceCode}
-            />
-          </div>
-        )}
+        {/* Voice confirm step removed - transactions proceed directly after auth */}
 
         {/* Voice code fallback */}
         {step === 'voice_code_fallback' && userProfile?.voice_passphrase && (
