@@ -191,16 +191,19 @@ export type Database = {
         Row: {
           email: string | null
           full_name: string | null
+          mobile_number: string | null
           user_id: string | null
         }
         Insert: {
           email?: string | null
           full_name?: string | null
+          mobile_number?: string | null
           user_id?: string | null
         }
         Update: {
           email?: string | null
           full_name?: string | null
+          mobile_number?: string | null
           user_id?: string | null
         }
         Relationships: []
