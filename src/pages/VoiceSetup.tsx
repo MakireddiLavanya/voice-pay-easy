@@ -1,31 +1,61 @@
+/**
+ * Voice Setup Page
+ * Users set a custom voice passphrase, record it, and enroll for voice authentication.
+ */
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Mic, Check, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Mic, Check, RefreshCw, Pencil } from 'lucide-react';
+import { Label } from '@/components/ui/label';
 
-const PASSPHRASE = "My voice is my password";
+const SUGGESTED_PHRASES = [
+  'My voice is my password',
+  'Open sesame securely',
+  'Transfer with my voice',
+];
 
 const VoiceSetup = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  
-  const [step, setStep] = useState<'intro' | 'record' | 'confirm' | 'complete'>('intro');
+
+  const [step, setStep] = useState<'choose' | 'record' | 'confirm' | 'complete'>('choose');
+  const [passphrase, setPassphrase] = useState('');
+  const [customPhrase, setCustomPhrase] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [recordedPhrase, setRecordedPhrase] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const selectPhrase = (phrase: string) => {
+    setPassphrase(phrase);
+  };
+
+  const handleProceedToRecord = () => {
+    const finalPhrase = passphrase || customPhrase.trim();
+    if (!finalPhrase || finalPhrase.length < 4) {
+      toast({
+        title: 'Passphrase Too Short',
+        description: 'Please enter at least 4 characters for your voice password.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setPassphrase(finalPhrase);
+    setStep('record');
+  };
+
   const startRecording = () => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    
+
     if (!SpeechRecognition) {
       toast({
         title: 'Not Supported',
-        description: 'Voice recognition is not supported in this browser',
+        description: 'Voice recognition is not supported in this browser.',
         variant: 'destructive',
       });
       return;
@@ -36,11 +66,9 @@ const VoiceSetup = () => {
     recognition.interimResults = false;
     recognition.lang = 'en-IN';
 
-    recognition.onstart = () => {
-      setIsRecording(true);
-    };
+    recognition.onstart = () => setIsRecording(true);
 
-    recognition.onresult = (event) => {
+    recognition.onresult = (event: any) => {
       const result = event.results[0][0].transcript;
       setRecordedPhrase(result);
       setStep('confirm');
@@ -55,26 +83,17 @@ const VoiceSetup = () => {
       });
     };
 
-    recognition.onend = () => {
-      setIsRecording(false);
-    };
+    recognition.onend = () => setIsRecording(false);
 
     recognition.start();
   };
 
-  // Calculate string similarity using Levenshtein distance
   const calculateSimilarity = (str1: string, str2: string): number => {
     const len1 = str1.length;
     const len2 = str2.length;
     const matrix: number[][] = [];
-
-    for (let i = 0; i <= len1; i++) {
-      matrix[i] = [i];
-    }
-    for (let j = 0; j <= len2; j++) {
-      matrix[0][j] = j;
-    }
-
+    for (let i = 0; i <= len1; i++) matrix[i] = [i];
+    for (let j = 0; j <= len2; j++) matrix[0][j] = j;
     for (let i = 1; i <= len1; i++) {
       for (let j = 1; j <= len2; j++) {
         const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
@@ -85,22 +104,20 @@ const VoiceSetup = () => {
         );
       }
     }
-
     const maxLen = Math.max(len1, len2);
     return maxLen === 0 ? 1 : 1 - matrix[len1][len2] / maxLen;
   };
 
   const verifyAndSave = async () => {
     const normalizedRecorded = recordedPhrase.toLowerCase().trim();
-    const normalizedPassphrase = PASSPHRASE.toLowerCase().trim();
-    
-    // Require 85% similarity to the exact passphrase
+    const normalizedPassphrase = passphrase.toLowerCase().trim();
+
     const similarity = calculateSimilarity(normalizedRecorded, normalizedPassphrase);
-    
-    if (similarity < 0.85) {
+
+    if (similarity < 0.75) {
       toast({
         title: 'Phrase Mismatch',
-        description: `The recorded phrase doesn't match closely enough. Please say "${PASSPHRASE}" clearly.`,
+        description: `What you said doesn't match your passphrase. Please try again.`,
         variant: 'destructive',
       });
       setStep('record');
@@ -113,7 +130,7 @@ const VoiceSetup = () => {
         .from('profiles')
         .update({
           voice_enrolled: true,
-          voice_passphrase: recordedPhrase,
+          voice_passphrase: passphrase,
         })
         .eq('user_id', user?.id);
 
@@ -122,9 +139,9 @@ const VoiceSetup = () => {
       setStep('complete');
       toast({
         title: 'Voice Enrolled!',
-        description: 'Your voice has been set up for authentication.',
+        description: 'Your voice password has been saved successfully.',
       });
-    } catch (error) {
+    } catch {
       toast({
         title: 'Error',
         description: 'Failed to save voice data. Please try again.',
@@ -137,74 +154,86 @@ const VoiceSetup = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="bg-card border-b border-border px-4 py-4">
-        <div className="max-w-lg mx-auto flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+      <header className="sticky top-0 z-10 bg-card/90 backdrop-blur-md border-b border-border px-4 py-3">
+        <div className="max-w-lg mx-auto flex items-center gap-3">
+          <Button variant="ghost" size="icon" className="rounded-full" onClick={() => navigate(-1)}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <h1 className="text-lg font-bold text-foreground">Voice Setup</h1>
+          <div>
+            <h1 className="text-lg font-bold text-foreground">Voice Setup</h1>
+            <p className="text-xs text-muted-foreground">Set your voice password</p>
+          </div>
         </div>
       </header>
 
-      {/* Content */}
-      <main className="max-w-lg mx-auto px-4 py-6">
-        {step === 'intro' && (
+      <main className="max-w-lg mx-auto px-4 py-6 space-y-4">
+        {/* Step 1: Choose / type passphrase */}
+        {step === 'choose' && (
           <Card className="animate-fade-in">
             <CardHeader className="text-center">
-              <div className="mx-auto w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                <Mic className="w-10 h-10 text-primary" />
+              <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+                <Mic className="w-8 h-8 text-primary" />
               </div>
-              <CardTitle>Set Up Voice Authentication</CardTitle>
+              <CardTitle>Choose Your Voice Password</CardTitle>
               <CardDescription>
-                Record your voice passphrase to enable secure voice-based transfers
+                Pick a suggested phrase or create your own. You'll speak this phrase to authenticate transactions.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="bg-muted rounded-xl p-4">
-                <p className="text-sm text-muted-foreground mb-2">
-                  You will need to say:
-                </p>
-                <p className="text-lg font-medium text-foreground text-center">
-                  "{PASSPHRASE}"
-                </p>
+            <CardContent className="space-y-5">
+              {/* Suggestions */}
+              <div className="space-y-2">
+                <Label className="text-sm text-muted-foreground">Suggested phrases</Label>
+                <div className="space-y-2">
+                  {SUGGESTED_PHRASES.map((phrase) => (
+                    <button
+                      key={phrase}
+                      onClick={() => { setPassphrase(phrase); setCustomPhrase(''); }}
+                      className={`w-full text-left px-4 py-3 rounded-xl border transition-all text-sm font-medium ${
+                        passphrase === phrase
+                          ? 'border-primary bg-primary/10 text-foreground'
+                          : 'border-border bg-muted/50 text-muted-foreground hover:border-primary/50'
+                      }`}
+                    >
+                      "{phrase}"
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              <ul className="space-y-3 text-sm text-muted-foreground">
-                <li className="flex items-start gap-2">
-                  <Check className="w-4 h-4 text-success mt-0.5" />
-                  <span>Speak clearly in a quiet environment</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="w-4 h-4 text-success mt-0.5" />
-                  <span>Hold the device close to your mouth</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="w-4 h-4 text-success mt-0.5" />
-                  <span>Your voice will be used to verify transactions</span>
-                </li>
-              </ul>
+              {/* Custom input */}
+              <div className="space-y-2">
+                <Label className="text-sm text-muted-foreground flex items-center gap-1.5">
+                  <Pencil className="w-3.5 h-3.5" /> Or type your own
+                </Label>
+                <Input
+                  placeholder="e.g. Unlock my wallet now"
+                  value={customPhrase}
+                  onChange={(e) => {
+                    setCustomPhrase(e.target.value);
+                    setPassphrase(''); // deselect suggestion
+                  }}
+                  className="text-sm"
+                />
+              </div>
 
-              <Button className="w-full" onClick={() => setStep('record')}>
-                Start Voice Setup
+              <Button className="w-full" onClick={handleProceedToRecord}>
+                Continue to Record
               </Button>
             </CardContent>
           </Card>
         )}
 
+        {/* Step 2: Record */}
         {step === 'record' && (
           <Card className="animate-fade-in">
             <CardHeader className="text-center">
               <CardTitle>Record Your Voice</CardTitle>
-              <CardDescription>
-                Tap the microphone and say the passphrase clearly
-              </CardDescription>
+              <CardDescription>Tap the mic and say your passphrase clearly</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="bg-secondary rounded-xl p-6 text-center">
-                <p className="text-lg font-medium text-foreground">
-                  "{PASSPHRASE}"
-                </p>
+              <div className="bg-primary/5 border border-primary/20 rounded-xl p-5 text-center">
+                <p className="text-xs text-muted-foreground mb-1">Say this:</p>
+                <p className="text-lg font-semibold text-foreground">"{passphrase}"</p>
               </div>
 
               <div className="flex justify-center">
@@ -213,7 +242,7 @@ const VoiceSetup = () => {
                   disabled={isRecording}
                   className={`w-24 h-24 rounded-full flex items-center justify-center transition-all ${
                     isRecording
-                      ? 'bg-accent animate-pulse shadow-success'
+                      ? 'bg-accent animate-pulse shadow-lg'
                       : 'bg-primary shadow-glow hover:scale-105'
                   }`}
                 >
@@ -224,39 +253,38 @@ const VoiceSetup = () => {
               <p className="text-center text-sm text-muted-foreground">
                 {isRecording ? 'Listening...' : 'Tap to record'}
               </p>
+
+              <Button variant="outline" className="w-full" onClick={() => setStep('choose')}>
+                ← Change Passphrase
+              </Button>
             </CardContent>
           </Card>
         )}
 
+        {/* Step 3: Confirm */}
         {step === 'confirm' && (
           <Card className="animate-fade-in">
             <CardHeader className="text-center">
               <CardTitle>Confirm Recording</CardTitle>
-              <CardDescription>
-                We captured the following phrase
-              </CardDescription>
+              <CardDescription>We captured the following</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="bg-muted rounded-xl p-6 text-center">
-                <p className="text-lg font-medium text-foreground">
-                  "{recordedPhrase}"
-                </p>
+            <CardContent className="space-y-5">
+              <div className="space-y-3">
+                <div className="bg-muted rounded-xl p-4 text-center">
+                  <p className="text-xs text-muted-foreground mb-1">Your passphrase</p>
+                  <p className="font-semibold text-foreground">"{passphrase}"</p>
+                </div>
+                <div className="bg-accent/10 border border-accent/20 rounded-xl p-4 text-center">
+                  <p className="text-xs text-muted-foreground mb-1">What we heard</p>
+                  <p className="font-semibold text-foreground">"{recordedPhrase}"</p>
+                </div>
               </div>
 
               <div className="flex gap-3">
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => setStep('record')}
-                >
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Re-record
+                <Button variant="outline" className="flex-1" onClick={() => setStep('record')}>
+                  <RefreshCw className="w-4 h-4 mr-2" /> Re-record
                 </Button>
-                <Button
-                  className="flex-1"
-                  onClick={verifyAndSave}
-                  disabled={loading}
-                >
+                <Button className="flex-1" onClick={verifyAndSave} disabled={loading}>
                   {loading ? 'Saving...' : 'Confirm & Save'}
                 </Button>
               </div>
@@ -264,15 +292,16 @@ const VoiceSetup = () => {
           </Card>
         )}
 
+        {/* Step 4: Done */}
         {step === 'complete' && (
           <Card className="animate-fade-in">
             <CardHeader className="text-center">
-              <div className="mx-auto w-20 h-20 rounded-full bg-success/10 flex items-center justify-center mb-4">
-                <Check className="w-10 h-10 text-success" />
+              <div className="mx-auto w-16 h-16 rounded-full bg-success/10 flex items-center justify-center mb-3">
+                <Check className="w-8 h-8 text-success" />
               </div>
               <CardTitle>Voice Setup Complete!</CardTitle>
               <CardDescription>
-                Your voice is now enrolled for secure authentication
+                Your voice password "{passphrase}" is now enrolled
               </CardDescription>
             </CardHeader>
             <CardContent>
