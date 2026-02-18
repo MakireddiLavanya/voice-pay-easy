@@ -53,14 +53,61 @@ const Transfer = () => {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [fraudAlerts, setFraudAlerts] = useState<string[]>([]);
 
+  // Handle voice command: auto-select contact and skip to auth
   useEffect(() => {
     const state = location.state as { recipient?: string; amount?: number } | null;
     if (state?.recipient) {
       setSearchQuery(state.recipient);
-      searchRecipients(state.recipient);
+      if (state?.amount) setAmount(state.amount.toString());
+      // Auto-search and select the best match
+      autoSelectRecipient(state.recipient, state.amount);
     }
-    if (state?.amount) setAmount(state.amount.toString());
   }, [location.state]);
+
+  const autoSelectRecipient = async (name: string, amount?: number) => {
+    if (!user) return;
+    try {
+      const { data, error } = await supabase
+        .from('profiles_public' as any)
+        .select('user_id, full_name, email, mobile_number')
+        .neq('user_id', user.id)
+        .ilike('full_name', `%${name}%`)
+        .limit(1);
+      if (error) throw error;
+      const matches = (data as unknown as Profile[]) || [];
+      if (matches.length > 0) {
+        setSelectedRecipient(matches[0]);
+        if (amount && amount > 0) {
+          // Voice command had both recipient + amount → skip to auth
+          setStep('amount');
+          // Small delay to let state settle, then auto-proceed
+          setTimeout(() => {
+            setStep('fraud_check');
+            handleVoiceAutoAuth(matches[0], amount);
+          }, 800);
+        } else {
+          setStep('amount');
+        }
+      } else {
+        // No match found, stay on search
+        searchRecipients(name);
+      }
+    } catch {
+      searchRecipients(name);
+    }
+  };
+
+  const handleVoiceAutoAuth = async (recipient: Profile, amt: number) => {
+    if (!user) return;
+    if (amt > balance && balance > 0) {
+      toast({ title: 'Insufficient Balance', description: 'You do not have enough funds', variant: 'destructive' });
+      setStep('amount');
+      return;
+    }
+    const result = await checkTransaction(amt, recipient.user_id);
+    if (result.isSuspicious) setFraudAlerts(result.alerts);
+    setStep('authenticate');
+  };
 
   useEffect(() => {
     if (user) { fetchBalance(); fetchUserProfile(); }
