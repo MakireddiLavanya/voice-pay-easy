@@ -25,10 +25,10 @@ interface Profile {
 
 interface UserProfile {
   auth_mode: string;
-  transaction_pin: string | null;
   voice_passphrase: string | null;
   voice_enrolled: boolean | null;
   voice_tolerance: number;
+  has_pin: boolean;
 }
 
 type TransferStep = 'recipient' | 'amount' | 'fraud_check' | 'authenticate' | 'voice_confirm' | 'voice_code_fallback' | 'confirm' | 'processing';
