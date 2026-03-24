@@ -404,7 +404,7 @@ const Transfer = () => {
           <div className="animate-fade-in">
             <AuthenticationGuard
               authMode={userProfile.auth_mode as 'voice' | 'pin' | 'voice_pin'}
-              storedPin={userProfile.transaction_pin}
+              hasPinSet={userProfile.has_pin}
               storedPassphrase={userProfile.voice_passphrase}
               voiceTolerance={userProfile.voice_tolerance}
               onAuthenticated={handleAuthenticated}

@@ -156,7 +156,7 @@ const AuthenticationGuard = ({
             </div>
           ) : (
             <>
-              <PinInput onSubmit={handlePinSubmit} error={pinError} disabled={verifyingPin} />
+              <PinInput onSubmit={handlePinSubmit} error={pinError} loading={verifyingPin} />
               <Button variant="outline" className="w-full mt-2" onClick={onCancel}>
                 Cancel
               </Button>
