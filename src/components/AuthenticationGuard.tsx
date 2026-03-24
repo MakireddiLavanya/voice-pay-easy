@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Shield, Mic, Lock, ShieldCheck } from 'lucide-react';
 import PinInput from '@/components/PinInput';
 import VoiceCodeVerify from '@/components/VoiceCodeVerify';
+import { supabase } from '@/integrations/supabase/client';
 
 type AuthMode = 'voice' | 'pin' | 'voice_pin';
 
