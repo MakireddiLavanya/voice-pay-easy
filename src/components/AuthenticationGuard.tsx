@@ -145,7 +145,7 @@ const AuthenticationGuard = ({
           )}
         </CardHeader>
         <CardContent className="space-y-4">
-          {!storedPin ? (
+          {!hasPinSet ? (
             <div className="text-center space-y-3">
               <p className="text-sm text-muted-foreground">
                 No PIN set. Please set a transaction PIN in your profile settings.
@@ -156,7 +156,7 @@ const AuthenticationGuard = ({
             </div>
           ) : (
             <>
-              <PinInput onSubmit={handlePinSubmit} error={pinError} />
+              <PinInput onSubmit={handlePinSubmit} error={pinError} disabled={verifyingPin} />
               <Button variant="outline" className="w-full mt-2" onClick={onCancel}>
                 Cancel
               </Button>
