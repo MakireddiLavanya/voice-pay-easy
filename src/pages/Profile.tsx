@@ -86,15 +86,19 @@ const Profile = () => {
   };
 
   const handlePinSet = async (pin: string) => {
-    const { error } = await supabase
-      .from('profiles')
-      .update({ transaction_pin: pin })
-      .eq('user_id', user?.id);
-
-    if (!error) {
-      setProfile((prev) => prev ? { ...prev, transaction_pin: pin } : null);
+    try {
+      const { data, error } = await supabase.rpc('set_transaction_pin', { p_pin: pin });
+      if (error) throw error;
+      const result = data as { success: boolean; error?: string };
+      if (!result.success) {
+        toast({ title: 'Error', description: result.error || 'Failed to set PIN', variant: 'destructive' });
+        return;
+      }
+      setProfile((prev) => prev ? { ...prev, transaction_pin: 'set' } : null);
       setShowPinSetup(false);
-      toast({ title: 'PIN Set Successfully', description: 'Your transaction PIN has been saved.' });
+      toast({ title: 'PIN Set Successfully', description: 'Your transaction PIN has been saved securely.' });
+    } catch {
+      toast({ title: 'Error', description: 'Failed to set PIN. Please try again.', variant: 'destructive' });
     }
   };
 
