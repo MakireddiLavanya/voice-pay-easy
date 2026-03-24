@@ -210,6 +210,7 @@ export type Database = {
       }
     }
     Functions: {
+      set_transaction_pin: { Args: { p_pin: string }; Returns: Json }
       transfer_funds: {
         Args: {
           p_amount: number
@@ -219,6 +220,7 @@ export type Database = {
         }
         Returns: Json
       }
+      verify_transaction_pin: { Args: { p_pin: string }; Returns: Json }
     }
     Enums: {
       [_ in never]: never
