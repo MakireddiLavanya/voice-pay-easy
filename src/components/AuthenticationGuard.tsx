@@ -15,7 +15,7 @@ type AuthMode = 'voice' | 'pin' | 'voice_pin';
 
 interface AuthenticationGuardProps {
   authMode: AuthMode;
-  storedPin: string | null;
+  hasPinSet: boolean;
   storedPassphrase: string | null;
   voiceTolerance: number;
   onAuthenticated: () => void;
