@@ -26,7 +26,7 @@ interface AuthenticationGuardProps {
 
 const AuthenticationGuard = ({
   authMode,
-  storedPin,
+  hasPinSet,
   storedPassphrase,
   voiceTolerance,
   onAuthenticated,
@@ -34,20 +34,32 @@ const AuthenticationGuard = ({
   onLogAttempt,
   onVoiceMismatch,
 }: AuthenticationGuardProps) => {
-  // For voice+pin mode, track which step we're on
   const [step, setStep] = useState<'voice' | 'pin' | 'fallback_pin'>(() => {
     if (authMode === 'pin') return 'pin';
-    return 'voice'; // voice or voice_pin starts with voice
+    return 'voice';
   });
   const [pinError, setPinError] = useState('');
+  const [verifyingPin, setVerifyingPin] = useState(false);
 
-  const handlePinSubmit = (enteredPin: string) => {
-    if (enteredPin === storedPin) {
-      onLogAttempt('pin', true);
-      onAuthenticated();
-    } else {
-      setPinError('Incorrect PIN. Try again.');
-      onLogAttempt('pin', false, 'Incorrect PIN');
+  const handlePinSubmit = async (enteredPin: string) => {
+    setVerifyingPin(true);
+    setPinError('');
+    try {
+      const { data, error } = await supabase.rpc('verify_transaction_pin', { p_pin: enteredPin });
+      if (error) throw error;
+      const result = data as { success: boolean; error?: string };
+      if (result.success) {
+        onLogAttempt('pin', true);
+        onAuthenticated();
+      } else {
+        setPinError(result.error || 'Incorrect PIN. Try again.');
+        onLogAttempt('pin', false, 'Incorrect PIN');
+      }
+    } catch {
+      setPinError('Verification failed. Try again.');
+      onLogAttempt('pin', false, 'Server error');
+    } finally {
+      setVerifyingPin(false);
     }
   };
 
