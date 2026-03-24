@@ -121,8 +121,8 @@ const Transfer = () => {
 
   const fetchUserProfile = async () => {
     if (!user) return;
-    const { data } = await supabase.from('profiles').select('auth_mode, transaction_pin, voice_passphrase, voice_enrolled, voice_tolerance').eq('user_id', user.id).single();
-    if (data) setUserProfile(data);
+    const { data } = await supabase.from('profiles').select('auth_mode, voice_passphrase, voice_enrolled, voice_tolerance, transaction_pin').eq('user_id', user.id).single();
+    if (data) setUserProfile({ ...data, has_pin: !!data.transaction_pin });
   };
 
   const searchRecipients = async (query: string) => {
