@@ -9,12 +9,13 @@ import { Button } from '@/components/ui/button';
 import { Shield, Mic, Lock, ShieldCheck } from 'lucide-react';
 import PinInput from '@/components/PinInput';
 import VoiceCodeVerify from '@/components/VoiceCodeVerify';
+import { supabase } from '@/integrations/supabase/client';
 
 type AuthMode = 'voice' | 'pin' | 'voice_pin';
 
 interface AuthenticationGuardProps {
   authMode: AuthMode;
-  storedPin: string | null;
+  hasPinSet: boolean;
   storedPassphrase: string | null;
   voiceTolerance: number;
   onAuthenticated: () => void;
@@ -25,7 +26,7 @@ interface AuthenticationGuardProps {
 
 const AuthenticationGuard = ({
   authMode,
-  storedPin,
+  hasPinSet,
   storedPassphrase,
   voiceTolerance,
   onAuthenticated,
@@ -33,20 +34,32 @@ const AuthenticationGuard = ({
   onLogAttempt,
   onVoiceMismatch,
 }: AuthenticationGuardProps) => {
-  // For voice+pin mode, track which step we're on
   const [step, setStep] = useState<'voice' | 'pin' | 'fallback_pin'>(() => {
     if (authMode === 'pin') return 'pin';
-    return 'voice'; // voice or voice_pin starts with voice
+    return 'voice';
   });
   const [pinError, setPinError] = useState('');
+  const [verifyingPin, setVerifyingPin] = useState(false);
 
-  const handlePinSubmit = (enteredPin: string) => {
-    if (enteredPin === storedPin) {
-      onLogAttempt('pin', true);
-      onAuthenticated();
-    } else {
-      setPinError('Incorrect PIN. Try again.');
-      onLogAttempt('pin', false, 'Incorrect PIN');
+  const handlePinSubmit = async (enteredPin: string) => {
+    setVerifyingPin(true);
+    setPinError('');
+    try {
+      const { data, error } = await supabase.rpc('verify_transaction_pin', { p_pin: enteredPin });
+      if (error) throw error;
+      const result = data as { success: boolean; error?: string };
+      if (result.success) {
+        onLogAttempt('pin', true);
+        onAuthenticated();
+      } else {
+        setPinError(result.error || 'Incorrect PIN. Try again.');
+        onLogAttempt('pin', false, 'Incorrect PIN');
+      }
+    } catch {
+      setPinError('Verification failed. Try again.');
+      onLogAttempt('pin', false, 'Server error');
+    } finally {
+      setVerifyingPin(false);
     }
   };
 
@@ -132,7 +145,7 @@ const AuthenticationGuard = ({
           )}
         </CardHeader>
         <CardContent className="space-y-4">
-          {!storedPin ? (
+          {!hasPinSet ? (
             <div className="text-center space-y-3">
               <p className="text-sm text-muted-foreground">
                 No PIN set. Please set a transaction PIN in your profile settings.
@@ -143,7 +156,7 @@ const AuthenticationGuard = ({
             </div>
           ) : (
             <>
-              <PinInput onSubmit={handlePinSubmit} error={pinError} />
+              <PinInput onSubmit={handlePinSubmit} error={pinError} loading={verifyingPin} />
               <Button variant="outline" className="w-full mt-2" onClick={onCancel}>
                 Cancel
               </Button>

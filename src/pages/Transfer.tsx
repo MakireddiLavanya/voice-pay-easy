@@ -25,10 +25,10 @@ interface Profile {
 
 interface UserProfile {
   auth_mode: string;
-  transaction_pin: string | null;
   voice_passphrase: string | null;
   voice_enrolled: boolean | null;
   voice_tolerance: number;
+  has_pin: boolean;
 }
 
 type TransferStep = 'recipient' | 'amount' | 'fraud_check' | 'authenticate' | 'voice_confirm' | 'voice_code_fallback' | 'confirm' | 'processing';
@@ -121,8 +121,8 @@ const Transfer = () => {
 
   const fetchUserProfile = async () => {
     if (!user) return;
-    const { data } = await supabase.from('profiles').select('auth_mode, transaction_pin, voice_passphrase, voice_enrolled, voice_tolerance').eq('user_id', user.id).single();
-    if (data) setUserProfile(data);
+    const { data } = await supabase.from('profiles').select('auth_mode, voice_passphrase, voice_enrolled, voice_tolerance, transaction_pin').eq('user_id', user.id).single();
+    if (data) setUserProfile({ ...data, has_pin: !!data.transaction_pin });
   };
 
   const searchRecipients = async (query: string) => {
@@ -404,7 +404,7 @@ const Transfer = () => {
           <div className="animate-fade-in">
             <AuthenticationGuard
               authMode={userProfile.auth_mode as 'voice' | 'pin' | 'voice_pin'}
-              storedPin={userProfile.transaction_pin}
+              hasPinSet={userProfile.has_pin}
               storedPassphrase={userProfile.voice_passphrase}
               voiceTolerance={userProfile.voice_tolerance}
               onAuthenticated={handleAuthenticated}
