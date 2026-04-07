@@ -11,6 +11,7 @@ import Transfer from "./pages/Transfer";
 import History from "./pages/History";
 import VoiceSetup from "./pages/VoiceSetup";
 import Profile from "./pages/Profile";
+import SecurityDashboard from "./pages/SecurityDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/history" element={<History />} />
             <Route path="/voice-setup" element={<VoiceSetup />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/security" element={<SecurityDashboard />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

@@ -44,6 +44,30 @@ export type Database = {
         }
         Relationships: []
       }
+      face_references: {
+        Row: {
+          created_at: string
+          id: string
+          image_data: string
+          is_active: boolean
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_data: string
+          is_active?: boolean
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_data?: string
+          is_active?: boolean
+          user_id?: string
+        }
+        Relationships: []
+      }
       fraud_alerts: {
         Row: {
           alert_type: string
@@ -77,13 +101,46 @@ export type Database = {
         }
         Relationships: []
       }
+      otp_codes: {
+        Row: {
+          code_hash: string
+          created_at: string
+          expires_at: string
+          id: string
+          purpose: string
+          used: boolean
+          user_id: string
+        }
+        Insert: {
+          code_hash: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          purpose?: string
+          used?: boolean
+          user_id: string
+        }
+        Update: {
+          code_hash?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          purpose?: string
+          used?: boolean
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           auth_mode: string
           created_at: string
           email: string
+          face_enrolled: boolean
+          failed_auth_attempts: number
           full_name: string
           id: string
+          locked_until: string | null
           mobile_number: string
           transaction_pin: string | null
           updated_at: string
@@ -96,8 +153,11 @@ export type Database = {
           auth_mode?: string
           created_at?: string
           email: string
+          face_enrolled?: boolean
+          failed_auth_attempts?: number
           full_name: string
           id?: string
+          locked_until?: string | null
           mobile_number?: string
           transaction_pin?: string | null
           updated_at?: string
@@ -110,8 +170,11 @@ export type Database = {
           auth_mode?: string
           created_at?: string
           email?: string
+          face_enrolled?: boolean
+          failed_auth_attempts?: number
           full_name?: string
           id?: string
+          locked_until?: string | null
           mobile_number?: string
           transaction_pin?: string | null
           updated_at?: string
@@ -210,6 +273,10 @@ export type Database = {
       }
     }
     Functions: {
+      check_account_locked: { Args: never; Returns: Json }
+      generate_otp: { Args: { p_purpose?: string }; Returns: Json }
+      increment_failed_attempts: { Args: never; Returns: Json }
+      reset_failed_attempts: { Args: never; Returns: undefined }
       set_transaction_pin: { Args: { p_pin: string }; Returns: Json }
       transfer_funds: {
         Args: {
@@ -218,6 +285,10 @@ export type Database = {
           p_receiver_id: string
           p_sender_id: string
         }
+        Returns: Json
+      }
+      verify_otp: {
+        Args: { p_code: string; p_purpose?: string }
         Returns: Json
       }
       verify_transaction_pin: { Args: { p_pin: string }; Returns: Json }

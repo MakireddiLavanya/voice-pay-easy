@@ -1,5 +1,5 @@
 /**
- * Transfer Page - Enhanced with Mobile Number Search & Redesigned UI
+ * Transfer Page - Enhanced with Voice Confirmation, OTP, Face Auth, Account Locking
  */
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -29,9 +29,11 @@ interface UserProfile {
   voice_enrolled: boolean | null;
   voice_tolerance: number;
   has_pin: boolean;
+  email: string;
+  face_enrolled: boolean;
 }
 
-type TransferStep = 'recipient' | 'amount' | 'fraud_check' | 'authenticate' | 'voice_confirm' | 'voice_code_fallback' | 'confirm' | 'processing';
+type TransferStep = 'recipient' | 'amount' | 'fraud_check' | 'voice_confirm' | 'authenticate' | 'voice_code_fallback' | 'processing';
 
 const QUICK_AMOUNTS = [100, 500, 1000, 2000, 5000];
 
@@ -52,14 +54,13 @@ const Transfer = () => {
   const [balance, setBalance] = useState(0);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [fraudAlerts, setFraudAlerts] = useState<string[]>([]);
+  const [faceReference, setFaceReference] = useState<string | null>(null);
 
-  // Handle voice command: auto-select contact and skip to auth
   useEffect(() => {
     const state = location.state as { recipient?: string; amount?: number } | null;
     if (state?.recipient) {
       setSearchQuery(state.recipient);
       if (state?.amount) setAmount(state.amount.toString());
-      // Auto-search and select the best match
       autoSelectRecipient(state.recipient, state.amount);
     }
   }, [location.state]);
@@ -78,9 +79,7 @@ const Transfer = () => {
       if (matches.length > 0) {
         setSelectedRecipient(matches[0]);
         if (amount && amount > 0) {
-          // Voice command had both recipient + amount → skip to auth
           setStep('amount');
-          // Small delay to let state settle, then auto-proceed
           setTimeout(() => {
             setStep('fraud_check');
             handleVoiceAutoAuth(matches[0], amount);
@@ -89,7 +88,6 @@ const Transfer = () => {
           setStep('amount');
         }
       } else {
-        // No match found, stay on search
         searchRecipients(name);
       }
     } catch {
@@ -106,11 +104,12 @@ const Transfer = () => {
     }
     const result = await checkTransaction(amt, recipient.user_id);
     if (result.isSuspicious) setFraudAlerts(result.alerts);
-    setStep('authenticate');
+    // Go to voice confirmation first
+    setStep('voice_confirm');
   };
 
   useEffect(() => {
-    if (user) { fetchBalance(); fetchUserProfile(); }
+    if (user) { fetchBalance(); fetchUserProfile(); fetchFaceRef(); }
   }, [user]);
 
   const fetchBalance = async () => {
@@ -121,8 +120,24 @@ const Transfer = () => {
 
   const fetchUserProfile = async () => {
     if (!user) return;
-    const { data } = await supabase.from('profiles').select('auth_mode, voice_passphrase, voice_enrolled, voice_tolerance, transaction_pin').eq('user_id', user.id).single();
+    const { data } = await supabase
+      .from('profiles')
+      .select('auth_mode, voice_passphrase, voice_enrolled, voice_tolerance, transaction_pin, email, face_enrolled')
+      .eq('user_id', user.id)
+      .single();
     if (data) setUserProfile({ ...data, has_pin: !!data.transaction_pin });
+  };
+
+  const fetchFaceRef = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('face_references')
+      .select('image_data')
+      .eq('user_id', user.id)
+      .eq('is_active', true)
+      .limit(1)
+      .maybeSingle();
+    if (data) setFaceReference(data.image_data);
   };
 
   const searchRecipients = async (query: string) => {
@@ -158,12 +173,23 @@ const Transfer = () => {
     setStep('fraud_check');
     const result = await checkTransaction(transferAmount, selectedRecipient.user_id);
     if (result.isSuspicious) setFraudAlerts(result.alerts);
+    // Go to voice confirmation
+    setStep('voice_confirm');
+  };
+
+  const handleVoiceConfirmed = () => {
     setStep('authenticate');
   };
 
-  const handleAuthenticated = () => executeTransfer();
   const handleFallbackToVoiceCode = () => setStep('voice_code_fallback');
-  const handleVoiceCodeVerified = () => { logAuthAttempt('voice_code', true); executeTransfer(); };
+
+  const handleAuthenticated = () => executeTransfer();
+
+  const handleVoiceCodeVerified = () => {
+    logAuthAttempt('voice_code', true);
+    executeTransfer();
+  };
+
   const handleVoiceCodeFailed = () => {
     logAuthAttempt('voice_code', false, 'Max attempts exceeded');
     logVoiceMismatch();
@@ -200,8 +226,12 @@ const Transfer = () => {
     }
   };
 
-  const stepLabels = ['Recipient', 'Amount', 'Verify', 'Done'];
-  const currentIdx = step === 'recipient' ? 0 : step === 'amount' ? 1 : (step === 'authenticate' || step === 'fraud_check') ? 2 : 3;
+  const stepLabels = ['Recipient', 'Amount', 'Confirm', 'Verify', 'Done'];
+  const currentIdx = step === 'recipient' ? 0
+    : step === 'amount' ? 1
+    : step === 'voice_confirm' ? 2
+    : (step === 'authenticate' || step === 'fraud_check') ? 3
+    : 4;
 
   return (
     <div className="min-h-screen bg-background">
@@ -224,17 +254,17 @@ const Transfer = () => {
           {stepLabels.map((label, i) => (
             <div key={label} className="flex items-center flex-1">
               <div className="flex flex-col items-center gap-1 flex-shrink-0">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold transition-all duration-300 ${
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-semibold transition-all duration-300 ${
                   i === currentIdx ? 'bg-primary text-primary-foreground shadow-md scale-110'
                     : i < currentIdx ? 'bg-accent text-accent-foreground'
                     : 'bg-muted text-muted-foreground'
                 }`}>
-                  {i < currentIdx ? <Check className="w-4 h-4" /> : i + 1}
+                  {i < currentIdx ? <Check className="w-3 h-3" /> : i + 1}
                 </div>
-                <span className={`text-[10px] font-medium ${i <= currentIdx ? 'text-foreground' : 'text-muted-foreground'}`}>{label}</span>
+                <span className={`text-[9px] font-medium ${i <= currentIdx ? 'text-foreground' : 'text-muted-foreground'}`}>{label}</span>
               </div>
-              {i < 3 && (
-                <div className={`flex-1 h-0.5 mx-1 rounded-full transition-colors ${i < currentIdx ? 'bg-accent' : 'bg-muted'}`} />
+              {i < stepLabels.length - 1 && (
+                <div className={`flex-1 h-0.5 mx-0.5 rounded-full transition-colors ${i < currentIdx ? 'bg-accent' : 'bg-muted'}`} />
               )}
             </div>
           ))}
@@ -322,7 +352,6 @@ const Transfer = () => {
         {/* Step 2: Amount */}
         {step === 'amount' && selectedRecipient && (
           <div className="space-y-5 animate-fade-in">
-            {/* Recipient card */}
             <div className="flex items-center gap-3 p-4 rounded-xl bg-card border border-border">
               <div className="w-11 h-11 rounded-full bg-accent/10 flex items-center justify-center">
                 <User className="w-5 h-5 text-accent" />
@@ -338,14 +367,12 @@ const Transfer = () => {
               </Button>
             </div>
 
-            {/* Balance */}
             <div className="flex items-center gap-2 px-1">
               <Wallet className="w-4 h-4 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">Balance:</span>
               <span className="text-sm font-bold text-foreground">₹{balance.toLocaleString('en-IN')}</span>
             </div>
 
-            {/* Amount input */}
             <Card className="border-0 shadow-none bg-transparent">
               <CardContent className="p-0 space-y-4">
                 <div>
@@ -362,7 +389,6 @@ const Transfer = () => {
                   </div>
                 </div>
 
-                {/* Quick amounts */}
                 <div className="flex gap-2 flex-wrap">
                   {QUICK_AMOUNTS.map((val) => (
                     <Button
@@ -376,6 +402,13 @@ const Transfer = () => {
                     </Button>
                   ))}
                 </div>
+
+                {parseFloat(amount) > 5000 && (
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-warning/5 border border-warning/20">
+                    <AlertTriangle className="w-4 h-4 text-warning" />
+                    <p className="text-xs text-muted-foreground">High-value transfer — OTP verification will be required</p>
+                  </div>
+                )}
 
                 <div className="flex gap-3 pt-2">
                   <Button variant="outline" className="flex-1 h-12 rounded-xl" onClick={() => setStep('recipient')}>
@@ -399,6 +432,19 @@ const Transfer = () => {
           </div>
         )}
 
+        {/* Voice Confirmation - "Do you confirm sending ₹X to Y?" */}
+        {step === 'voice_confirm' && selectedRecipient && (
+          <div className="animate-fade-in">
+            <VoiceConfirmation
+              recipientName={selectedRecipient.full_name}
+              amount={parseFloat(amount)}
+              onConfirmed={handleVoiceConfirmed}
+              onCancel={() => setStep('amount')}
+              onFallbackToVoiceCode={handleFallbackToVoiceCode}
+            />
+          </div>
+        )}
+
         {/* Authentication */}
         {step === 'authenticate' && userProfile && (
           <div className="animate-fade-in">
@@ -411,11 +457,13 @@ const Transfer = () => {
               onCancel={() => setStep('amount')}
               onLogAttempt={logAuthAttempt}
               onVoiceMismatch={logVoiceMismatch}
+              transactionAmount={parseFloat(amount)}
+              userEmail={userProfile.email}
+              faceEnrolled={userProfile.face_enrolled}
+              faceReference={faceReference}
             />
           </div>
         )}
-
-        {/* Voice confirm step removed - transactions proceed directly after auth */}
 
         {/* Voice code fallback */}
         {step === 'voice_code_fallback' && userProfile?.voice_passphrase && (
