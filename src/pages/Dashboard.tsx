@@ -172,7 +172,7 @@ const Dashboard = () => {
         )}
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-4 gap-3">
           <Button variant="outline" className="h-20 flex-col gap-2 bg-card hover:bg-secondary" onClick={() => navigate('/transfer')}>
             <Send className="w-5 h-5 text-primary" />
             <span className="text-xs">Send</span>
@@ -180,6 +180,10 @@ const Dashboard = () => {
           <Button variant="outline" className="h-20 flex-col gap-2 bg-card hover:bg-secondary" onClick={() => navigate('/history')}>
             <History className="w-5 h-5 text-primary" />
             <span className="text-xs">History</span>
+          </Button>
+          <Button variant="outline" className="h-20 flex-col gap-2 bg-card hover:bg-secondary" onClick={() => navigate('/security')}>
+            <Shield className="w-5 h-5 text-primary" />
+            <span className="text-xs">Security</span>
           </Button>
           <Button variant="outline" className="h-20 flex-col gap-2 bg-card hover:bg-secondary" onClick={() => navigate('/profile')}>
             <User className="w-5 h-5 text-primary" />
