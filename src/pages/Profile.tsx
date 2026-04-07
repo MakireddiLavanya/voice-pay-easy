@@ -281,7 +281,44 @@ const Profile = () => {
           </CardContent>
         </Card>
 
-        {/* Noise Cancellation */}
+        {/* Face Authentication */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Camera className="w-5 h-5 text-primary" /> Face Authentication
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {showFaceEnroll ? (
+              <FaceAuth
+                mode="enroll"
+                onSuccess={async (imageData) => {
+                  if (!imageData || !user) return;
+                  // Deactivate old references
+                  await supabase.from('face_references').update({ is_active: false }).eq('user_id', user.id);
+                  // Store new reference
+                  await supabase.from('face_references').insert({ user_id: user.id, image_data: imageData });
+                  await supabase.from('profiles').update({ face_enrolled: true }).eq('user_id', user.id);
+                  setProfile(prev => prev ? { ...prev, face_enrolled: true } : null);
+                  setShowFaceEnroll(false);
+                  toast({ title: 'Face Enrolled', description: 'Your face has been saved for authentication.' });
+                }}
+                onCancel={() => setShowFaceEnroll(false)}
+              />
+            ) : (
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">
+                  {profile?.face_enrolled ? 'Face enrolled ✓' : 'Not enrolled'}
+                </p>
+                <Button size="sm" variant="outline" onClick={() => setShowFaceEnroll(true)}>
+                  {profile?.face_enrolled ? 'Re-enroll' : 'Enroll Face'}
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+
         <NoiseCancellationPanel
           sensitivity={sensitivity}
           onSensitivityChange={setSensitivity}
