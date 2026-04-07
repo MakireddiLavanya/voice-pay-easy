@@ -8,7 +8,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, User, Mail, Phone, CreditCard, Shield, Mic, Lock } from 'lucide-react';
+import { ArrowLeft, User, Mail, Phone, CreditCard, Shield, Mic, Lock, Camera } from 'lucide-react';
+import FaceAuth from '@/components/FaceAuth';
 import SecurityModeToggle from '@/components/SecurityModeToggle';
 import NoiseCancellationPanel from '@/components/NoiseCancellationPanel';
 import PinInput from '@/components/PinInput';
@@ -24,6 +25,7 @@ interface ProfileData {
   auth_mode: string;
   transaction_pin: string | null;
   voice_tolerance: number;
+  face_enrolled: boolean;
 }
 
 interface WalletData {
@@ -40,6 +42,7 @@ const Profile = () => {
   const [wallet, setWallet] = useState<WalletData | null>(null);
   const [loading, setLoading] = useState(true);
   const [showPinSetup, setShowPinSetup] = useState(false);
+  const [showFaceEnroll, setShowFaceEnroll] = useState(false);
   const [voiceTolerance, setVoiceTolerance] = useState(85);
   const { sensitivity, setSensitivity, isFilterActive, setIsFilterActive } = useNoiseFilter();
 
@@ -51,7 +54,7 @@ const Profile = () => {
     try {
       const { data: profileData } = await supabase
         .from('profiles')
-        .select('full_name, email, mobile_number, voice_enrolled, auth_mode, transaction_pin, voice_tolerance')
+        .select('full_name, email, mobile_number, voice_enrolled, auth_mode, transaction_pin, voice_tolerance, face_enrolled')
         .eq('user_id', user?.id)
         .single();
 
